@@ -11,14 +11,15 @@ const byte ACCEL_CONFIG = 0x1C;
 const byte ACCEL_XOUT_H = 0x3B;
 const byte GYRO_CONFIG = 0x1B;
 long time;
-
+float altitude = 0;
+float AVRaltitude = 0;
 //variables MPU-6050
 float MPU_6050_AccX;
 float MPU_6050_AccY;
 float MPU_6050_AccZ;
 
 boolean ejected = false;
-float magnitude;
+float magnitude = 0;
 float pressure = 0;
 float previous_height_1 = 0;
 float previous_height_2 = 0;
@@ -29,6 +30,8 @@ float MPU_6050_Temp;
 float MPU_6050_GyroX;
 float MPU_6050_GyroY;
 float MPU_6050_GyroZ;
+
+int i = 0;
 
 //BMP280
 Adafruit_BMP280 bme;
@@ -56,7 +59,16 @@ void setup() {
   myServo.write(0);  // set servo to mid-point
   Serial.begin(9600);
 
-  Serial.println("Time; Magnitude; Temperature; Pressure; Height; Ejected?");
+  Serial.println("Time; Magnitude; Temperature; Reference Altitude; Current Altitude; Pressure; Ejected?");
+
+  i = 0;
+  while(i < 20){
+    AVRaltitude += bme.readAltitude(); 
+    i++;   
+    }
+
+    AVRaltitude /= 20;
+  
 
   pressure = bme.readPressure()/100;
 }
@@ -92,18 +104,23 @@ void loop() {
   Serial.print(time/1000);Serial.print("; ");
   magnitude = sqrt(pow(MPU_6050_AccX,2) + pow(MPU_6050_AccY,2) + pow(MPU_6050_AccZ,2));
   Serial.print(magnitude);Serial.print("; ");
+  altitude = bme.readAltitude();
   
   Serial.print(bme.readTemperature());Serial.print("; ");
+  Serial.print(AVRaltitude);Serial.print("; ");
+  Serial.print(altitude);Serial.print("; ");
   Serial.print(bme.readPressure()/100);Serial.print("; ");  
-  Serial.print(bme.readAltitude(pressure));Serial.print("; ");
+  
 
   
-  if(bme.readAltitude(pressure) > 10 && ejected == false){
+  if(altitude > AVRaltitude + 10 && ejected == false ){
     previous_height_3 = previous_height_2;
     previous_height_2 = previous_height_1;
-    previous_height_1 = bme.readAltitude(pressure);
+    previous_height_1 = altitude;
     
-    if(previous_height_3 > previous_height_2 && previous_height_2 > previous_height_1){
+    if((previous_height_3 > previous_height_2) && (previous_height_2 > previous_height_1)){
+        
+        
         myServo.write(180);              // tell servo to go to position in variable 'pos'
         delay(500);                       // waits 500ms for the servo to reach the position
         myServo.write(0);              // tell servo to go to position in variable 'pos'
